@@ -86,9 +86,10 @@ Add usernames or first names to the `AUTHORIZED_USERS` environment variable, sep
    docker compose up -d --build
    ```
 
-2. **Or use the build script:**
-   - **Windows:** `build-docker.bat`
-   - **Linux/Mac:** `./build-docker.sh`
+2. **Or use the comprehensive build script:**
+   ```bash
+   ./scripts/build.sh
+   ```
 
 3. **Monitor logs:**
    ```bash
@@ -139,7 +140,7 @@ The bot automatically categorizes items into:
 ## File Structure
 
 ```
-client/
+grocery_app/
 ├── index.js              # Main bot application
 ├── package.json          # Dependencies and scripts
 ├── .env                  # Environment variables (create this)
@@ -147,8 +148,9 @@ client/
 ├── Dockerfile           # Docker container configuration
 ├── docker-compose.yml   # Docker Compose setup
 ├── .dockerignore        # Docker build exclusions
-├── build-docker.sh      # Linux/Mac build script
-├── build-docker.bat     # Windows build script
+├── scripts/             # Build and deployment scripts
+│   ├── build.sh         # Comprehensive build script
+│   └── README.md        # Scripts documentation
 ├── data/                # SQLite database storage (Docker)
 ├── grocery_app_data/    # Data storage (created automatically)
 │   └── list.json        # Grocery list storage
