@@ -268,7 +268,7 @@ class CallbackHandlers {
                 }
             }
             
-                } catch (error) {
+        } catch (error) {
             console.error('Error updating category:', error);
             await bot.answerCallbackQuery(query.id, {
                 text: '❌ Failed to update category',
@@ -417,32 +417,24 @@ class CallbackHandlers {
             if (success) {
                 // Check if we're in a category view by examining the current message
                 const currentMessage = query.message.text;
-                console.log('🔍 Current message text:', currentMessage);
-                const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
-                console.log('🔍 Category match:', categoryMatch);
+                const categoryMatch = currentMessage.match(/🛒 Shopping List - (.+)$/m);
                 
                 if (categoryMatch && categoryMatch[1] !== 'Select Category') {
                     // We're in a specific category view, check if category still has items
                     const category = categoryMatch[1];
-                    console.log('🔍 Current category:', category);
                     
                     const groceryData = await groceryService.getAllItemsSorted();
                     const categoryItems = groceryData.activeItems.filter(item => item.category === category);
-                    console.log('🔍 Category items after status change:', categoryItems.length);
-                    console.log('🔍 Category items:', categoryItems.map(item => `${item.article} (${item.status})`));
                     
                     if (categoryItems.length > 0) {
                         // Category still has items, stay in the same category
-                        console.log('✅ Staying in category:', category);
                         await this.handleShopCategory(bot, query, category);
                     } else {
                         // Category is now empty, go back to category selection
-                        console.log('📋 Category empty, going back to categories');
                         await this.handleBackToCategories(bot, query);
                     }
                 } else {
                     // We're in category selection view, refresh it
-                    console.log('📋 In category selection, refreshing categories');
                     await this.handleBackToCategories(bot, query);
                 }
                 
@@ -475,7 +467,7 @@ class CallbackHandlers {
 
             // Check if we're in a specific category view
             const currentMessage = query.message.text;
-            const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
+            const categoryMatch = currentMessage.match(/🛒 Shopping List - (.+)$/m);
             
             if (categoryMatch && categoryMatch[1] !== 'Select Category') {
                 // We're in a specific category, check if it still has items
@@ -514,7 +506,7 @@ class CallbackHandlers {
 
             // Check if we're in a specific category view
             const currentMessage = query.message.text;
-            const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
+            const categoryMatch = currentMessage.match(/🛒 Shopping List - (.+)$/m);
             
             if (categoryMatch && categoryMatch[1] !== 'Select Category') {
                 // We're in a specific category, check if it still has items
