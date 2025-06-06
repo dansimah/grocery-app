@@ -1,0 +1,27 @@
+# name: Build and Deploy Docker App
+
+# on:
+#   push:
+#     branches:
+#       - main  # Triggers only on pushes to 'main'
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: self-hosted  # Ensures this runs on your LXC runner
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Build Docker image
+#         run: |
+#           docker build -t my-node-app:latest .
+
+#       - name: Stop and remove old container
+#         run: |
+#           docker stop my-node-app || true
+#           docker rm my-node-app || true
+
+#       - name: Run new container
+#         run: |
+#           docker run -d --name my-node-app -p 3000:3000 my-node-app:latest
