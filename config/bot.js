@@ -10,7 +10,7 @@ const BOT_CONFIG = {
     
     // Status reporting
     STATUS_CHAT_ID: process.env.STATUS_CHAT_ID || null,
-    STATUS_REPORTING_ENABLED: true, // Set to true to enable Telegram status notifications
+    STATUS_REPORTING_ENABLED: true, // Set to false to disable Telegram status notifications
     
     // Bot settings
     POLLING: true,

@@ -160,8 +160,6 @@ grocery_app/
 │   ├── build.sh         # Comprehensive build script
 │   └── README.md        # Scripts documentation
 ├── data/                # SQLite database storage (Docker)
-├── grocery_app_data/    # Data storage (created automatically)
-│   └── list.json        # Grocery list storage
 ├── config/              # Configuration modules
 ├── services/            # Business logic services
 ├── handlers/            # Telegram event handlers
