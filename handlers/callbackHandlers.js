@@ -415,8 +415,19 @@ class CallbackHandlers {
             const success = await groceryService.updateItemStatus(itemId, newStatus);
             
             if (success) {
-                // Refresh the shopping list
-                await this.refreshShoppingList(bot, query);
+                // Check if we're in a category view by examining the current message
+                const currentMessage = query.message.text;
+                const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
+                
+                if (categoryMatch) {
+                    // We're in a category view, refresh the same category
+                    const category = categoryMatch[1];
+                    await this.handleShopCategory(bot, query, category);
+                } else {
+                    // We're in the general view, refresh normally
+                    await this.refreshShoppingList(bot, query);
+                }
+                
                 await bot.answerCallbackQuery(query.id);
             } else {
                 await bot.answerCallbackQuery(query.id, {

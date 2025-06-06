@@ -124,50 +124,48 @@ class MessageFormatter {
     static createCategoryShoppingMessage(groceryData, selectedCategory) {
         const { activeItems, foundItems } = groceryData;
         
-        // Filter items by category
-        const categoryItems = activeItems.filter(item => item.category === selectedCategory);
-        
         let message = `🛒 <b>Shopping List - ${selectedCategory}</b>\n\n`;
         
+        // Add full categorized list at the top
+        message += this.createGroceryListMessage(groceryData);
+        message += `\n${'─'.repeat(30)}\n\n`;
+        
+        // Filter items by category for buttons
+        const categoryItems = activeItems.filter(item => item.category === selectedCategory);
+        
         if (categoryItems.length === 0) {
-            message += `No items in this category.`;
-            return message;
+            message += `<b>📋 ${selectedCategory}:</b> No items in this category.\n\n`;
+        } else {
+            message += `<b>📋 ${selectedCategory} Items (Click to change status):</b>\n`;
+            
+            // Group items by status for display
+            const pendingItems = categoryItems.filter(item => item.status === 'pending');
+            const selectedItems = categoryItems.filter(item => item.status === 'selected');
+            const notFoundItems = categoryItems.filter(item => item.status === 'not_found');
+
+            if (selectedItems.length > 0) {
+                message += `\n➡️ <b>Looking for:</b>\n`;
+                selectedItems.forEach(item => {
+                    message += `• ${item.article} (x${item.quantity})\n`;
+                });
+            }
+
+            if (pendingItems.length > 0) {
+                message += `\n📋 <b>Pending:</b>\n`;
+                pendingItems.forEach(item => {
+                    message += `• ${item.article} (x${item.quantity})\n`;
+                });
+            }
+
+            if (notFoundItems.length > 0) {
+                message += `\n🚫 <b>Not Found:</b>\n`;
+                notFoundItems.forEach(item => {
+                    message += `• ${item.article} (x${item.quantity})\n`;
+                });
+            }
         }
 
-        // Group items by status
-        const pendingItems = categoryItems.filter(item => item.status === 'pending');
-        const selectedItems = categoryItems.filter(item => item.status === 'selected');
-        const notFoundItems = categoryItems.filter(item => item.status === 'not_found');
-
-        if (selectedItems.length > 0) {
-            message += `➡️ <b>Looking for:</b>\n`;
-            selectedItems.forEach(item => {
-                message += `• ${item.article} (x${item.quantity})\n`;
-            });
-            message += `\n`;
-        }
-
-        if (pendingItems.length > 0) {
-            message += `📋 <b>Pending:</b>\n`;
-            pendingItems.forEach(item => {
-                message += `• ${item.article} (x${item.quantity})\n`;
-            });
-            message += `\n`;
-        }
-
-        if (notFoundItems.length > 0) {
-            message += `🚫 <b>Not Found:</b>\n`;
-            notFoundItems.forEach(item => {
-                message += `• ${item.article} (x${item.quantity})\n`;
-            });
-            message += `\n`;
-        }
-
-        if (foundItems.length > 0) {
-            message += `✅ <b>Found Items:</b> ${foundItems.length}\n\n`;
-        }
-
-        message += `👇 <b>Click items to change status:</b>`;
+        message += `\n👇 <b>Click items below to change their status:</b>`;
         
         return message;
     }

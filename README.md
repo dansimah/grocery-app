@@ -30,7 +30,7 @@ A Node.js Telegram bot for managing grocery lists with AI-powered item parsing u
 
 1. Clone or download this project
 
-2. Create a `.env` file in the client folder with the following variables:
+2. Create a `.env` file at `/home/.env` with the following variables:
    ```
    TELEGRAM_TOKEN=your_telegram_bot_token_here
    GOOGLE_API_KEY=your_google_gemini_api_key_here
@@ -53,13 +53,13 @@ A Node.js Telegram bot for managing grocery lists with AI-powered item parsing u
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot` command
 3. Follow the instructions to create your bot
-4. Copy the bot token and add it to your `.env` file
+4. Copy the bot token and add it to your `/home/.env` file
 
 ### 2. Get Google Gemini API Key
 
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
-3. Copy the API key and add it to your `.env` file
+3. Copy the API key and add it to your `/home/.env` file
 
 ### 3. Configure Authorization (Optional)
 
@@ -143,7 +143,7 @@ The bot automatically categorizes items into:
 grocery_app/
 ├── index.js              # Main bot application
 ├── package.json          # Dependencies and scripts
-├── .env                  # Environment variables (create this)
+├── .env                  # Environment variables (create at /home/.env)
 ├── README.md            # This file
 ├── Dockerfile           # Docker container configuration
 ├── docker-compose.yml   # Docker Compose setup
