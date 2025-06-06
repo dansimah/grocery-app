@@ -97,25 +97,11 @@ class MessageFormatter {
         
         let message = `🛒 <b>Shopping List - Select Category</b>\n\n`;
         
-        // Add summary stats
-        const totalActive = activeItems.length;
-        const totalFound = foundItems.length;
-        const totalPending = activeItems.filter(item => item.status === 'pending').length;
-        const totalSelected = activeItems.filter(item => item.status === 'selected').length;
-        const totalNotFound = activeItems.filter(item => item.status === 'not_found').length;
-
-        message += `📊 <b>Summary:</b>\n`;
-        message += `• ${totalActive} active items\n`;
-        message += `• ${totalFound} found items\n`;
+        // Add the full categorized grocery list
+        message += this.createGroceryListMessage(groceryData);
         
-        if (totalActive > 0) {
-            message += `\n📋 <b>Status:</b>\n`;
-            if (totalPending > 0) message += `• ${totalPending} pending\n`;
-            if (totalSelected > 0) message += `➡️ ${totalSelected} selected\n`;
-            if (totalNotFound > 0) message += `🚫 ${totalNotFound} not found\n`;
-        }
-
-        message += `\n👇 <b>Select a category to view items:</b>`;
+        message += `\n${'─'.repeat(30)}\n\n`;
+        message += `👇 <b>Select a category to manage items:</b>`;
         
         return message;
     }
@@ -135,37 +121,11 @@ class MessageFormatter {
         
         if (categoryItems.length === 0) {
             message += `<b>📋 ${selectedCategory}:</b> No items in this category.\n\n`;
+            message += `👇 <b>Use buttons below to navigate:</b>`;
         } else {
-            message += `<b>📋 ${selectedCategory} Items (Click to change status):</b>\n`;
-            
-            // Group items by status for display
-            const pendingItems = categoryItems.filter(item => item.status === 'pending');
-            const selectedItems = categoryItems.filter(item => item.status === 'selected');
-            const notFoundItems = categoryItems.filter(item => item.status === 'not_found');
-
-            if (selectedItems.length > 0) {
-                message += `\n➡️ <b>Looking for:</b>\n`;
-                selectedItems.forEach(item => {
-                    message += `• ${item.article} (x${item.quantity})\n`;
-                });
-            }
-
-            if (pendingItems.length > 0) {
-                message += `\n📋 <b>Pending:</b>\n`;
-                pendingItems.forEach(item => {
-                    message += `• ${item.article} (x${item.quantity})\n`;
-                });
-            }
-
-            if (notFoundItems.length > 0) {
-                message += `\n🚫 <b>Not Found:</b>\n`;
-                notFoundItems.forEach(item => {
-                    message += `• ${item.article} (x${item.quantity})\n`;
-                });
-            }
+            message += `<b>📋 Managing: ${selectedCategory} (${categoryItems.length} items)</b>\n\n`;
+            message += `👇 <b>Click items below to change their status:</b>`;
         }
-
-        message += `\n👇 <b>Click items below to change their status:</b>`;
         
         return message;
     }

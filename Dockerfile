@@ -13,9 +13,6 @@ RUN npm ci --only=production
 # Copy application files
 COPY . .
 
-# Copy .env file from host /home/.env
-COPY /home/.env .env
-
 # Create a non-root user first
 RUN addgroup -g 1001 -S botuser && \
     adduser -S botuser -u 1001 -G botuser

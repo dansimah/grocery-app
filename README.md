@@ -30,7 +30,7 @@ A Node.js Telegram bot for managing grocery lists with AI-powered item parsing u
 
 1. Clone or download this project
 
-2. Create a `.env` file at `/home/.env` with the following variables:
+2. Create a `.env` file in the project directory with the following variables:
    ```
    TELEGRAM_TOKEN=your_telegram_bot_token_here
    GOOGLE_API_KEY=your_google_gemini_api_key_here
@@ -53,13 +53,13 @@ A Node.js Telegram bot for managing grocery lists with AI-powered item parsing u
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot` command
 3. Follow the instructions to create your bot
-4. Copy the bot token and add it to your `/home/.env` file
+4. Copy the bot token and add it to your `.env` file
 
 ### 2. Get Google Gemini API Key
 
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
-3. Copy the API key and add it to your `/home/.env` file
+3. Copy the API key and add it to your `.env` file
 
 ### 3. Configure Authorization (Optional)
 
@@ -116,13 +116,19 @@ Add usernames or first names to the `AUTHORIZED_USERS` environment variable, sep
 3. Confirm or modify categories before adding to your list
 
 ### Shopping Mode (`/shop`)
-- View your list organized by category
-- Click items to change their status:
-  - `•` Pending (not selected yet)
-  - `➡️` Selected (currently looking for)
-  - `✅` Found (completed)
-  - `🚫` Not Found (unavailable)
-- Use action buttons to manage your list
+**Two-Step Interface:**
+
+1. **Category Selection View**: Shows your complete categorized list + category selection buttons
+2. **Category Management View**: Shows your complete categorized list + item action buttons for the selected category
+
+**Item Status Flow:**
+- `•` **Pending** → `➡️` **Selected** → `✅` **Found** (removed from list)
+- `🚫` **Not Found** → `•` **Pending** (reset to try again)
+
+**Navigation:**
+- Select category → Manage items in that category  
+- "Back to Categories" → Return to category selection
+- Clear/Refresh buttons available in both views
 
 ### Categories
 
@@ -143,7 +149,7 @@ The bot automatically categorizes items into:
 grocery_app/
 ├── index.js              # Main bot application
 ├── package.json          # Dependencies and scripts
-├── .env                  # Environment variables (create at /home/.env)
+├── .env                  # Environment variables (create this)
 ├── README.md            # This file
 ├── Dockerfile           # Docker container configuration
 ├── docker-compose.yml   # Docker Compose setup

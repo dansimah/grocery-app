@@ -207,67 +207,6 @@ lait
         return counts;
     }
 
-    // Create simple shopping keyboard without session service
-    static createSimpleShoppingKeyboard(activeItems = [], foundItems = []) {
-        const inlineKeyboard = [];
-
-        // Add buttons for active items
-        if (activeItems && Array.isArray(activeItems)) {
-            for (const item of activeItems) {
-                if (!item || !item.id) {
-                    console.error('Invalid item or missing ID:', item);
-                    continue;
-                }
-
-                let mainButtonText = '';
-                let nextStatus = '';
-
-                switch (item.status) {
-                    case 'selected':
-                        mainButtonText = `➡️ ${item.article} (x${item.quantity})`;
-                        nextStatus = 'found';
-                        break;
-                    case 'not_found':
-                        mainButtonText = `🚫 ${item.article} (x${item.quantity})`;
-                        nextStatus = 'pending';
-                        break;
-                    default: // 'pending'
-                        mainButtonText = `• ${item.article} (x${item.quantity})`;
-                        nextStatus = 'selected';
-                        break;
-                }
-
-                inlineKeyboard.push([{
-                    text: mainButtonText,
-                    callback_data: `item-status:${item.id}:${nextStatus}`
-                }]);
-            }
-        }
-
-        // Always add action buttons (even if list is empty)
-        const actionButtons = [];
-        
-        // Show Clear Found Items button only if there are found items
-        if (foundItems && foundItems.length > 0) {
-            actionButtons.push({ text: '🗑️ Clear Found Items', callback_data: 'clear-found' });
-        }
-        
-        actionButtons.push({ text: '🔄 Refresh List', callback_data: 'refresh' });
-        
-        if (actionButtons.length > 0) {
-            inlineKeyboard.push(actionButtons);
-        }
-
-        // Add Clear Selection button only if there are active items
-        if (activeItems && activeItems.length > 0) {
-            inlineKeyboard.push([
-                { text: '⬅️ Clear Selection', callback_data: 'clear-selection' }
-            ]);
-        }
-
-        return inlineKeyboard;
-    }
-
     // Create category-specific shopping keyboard
     static createCategoryShoppingKeyboard(activeItems = [], foundItems = [], selectedCategory) {
         const inlineKeyboard = [];

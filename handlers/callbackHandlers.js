@@ -424,8 +424,8 @@ class CallbackHandlers {
                     const category = categoryMatch[1];
                     await this.handleShopCategory(bot, query, category);
                 } else {
-                    // We're in the general view, refresh normally
-                    await this.refreshShoppingList(bot, query);
+                    // We're in the general view, go back to category selection
+                    await this.handleBackToCategories(bot, query);
                 }
                 
                 await bot.answerCallbackQuery(query.id);
@@ -575,98 +575,6 @@ class CallbackHandlers {
                 show_alert: true
             });
         }
-    }
-
-    // Helper method to refresh shopping list display
-    static async refreshShoppingList(bot, query) {
-        try {
-            const groceryData = await groceryService.getAllItemsSorted();
-            
-            const messageText = MessageFormatter.createGroceryListMessage(groceryData);
-            const keyboard = this.createSimpleShoppingKeyboard(groceryData.activeItems, groceryData.foundItems);
-
-            await loggerService.logMessageUpdate(
-                query.message.message_id,
-                query.message.chat.id,
-                'editMessageText',
-                query.message.text,
-                messageText,
-                `Shopping list refreshed - ${groceryData.activeItems.length} active, ${groceryData.foundItems.length} found items`
-            );
-            await bot.editMessageText(messageText, {
-                chat_id: query.message.chat.id,
-                message_id: query.message.message_id,
-                parse_mode: 'HTML',
-                reply_markup: {
-                    inline_keyboard: keyboard
-                }
-            });
-
-        } catch (error) {
-            console.error('Error refreshing shopping list:', error);
-            throw error;
-        }
-    }
-
-    // Create simple shopping keyboard (same as in commandHandlers)
-    static createSimpleShoppingKeyboard(activeItems = [], foundItems = []) {
-        const inlineKeyboard = [];
-
-        // Add buttons for active items
-        if (activeItems && Array.isArray(activeItems)) {
-            for (const item of activeItems) {
-                if (!item || !item.id) {
-                    console.error('Invalid item or missing ID:', item);
-                    continue;
-                }
-
-                let mainButtonText = '';
-                let nextStatus = '';
-
-                switch (item.status) {
-                    case 'selected':
-                        mainButtonText = `➡️ ${item.article} (x${item.quantity})`;
-                        nextStatus = 'found';
-                        break;
-                    case 'not_found':
-                        mainButtonText = `🚫 ${item.article} (x${item.quantity})`;
-                        nextStatus = 'pending';
-                        break;
-                    default: // 'pending'
-                        mainButtonText = `• ${item.article} (x${item.quantity})`;
-                        nextStatus = 'selected';
-                        break;
-                }
-
-                inlineKeyboard.push([{
-                    text: mainButtonText,
-                    callback_data: `item-status:${item.id}:${nextStatus}`
-                }]);
-            }
-        }
-
-        // Always add action buttons (even if list is empty)
-        const actionButtons = [];
-        
-        // Show Clear Found Items button only if there are found items
-        if (foundItems && foundItems.length > 0) {
-            actionButtons.push({ text: '🗑️ Clear Found Items', callback_data: 'clear-found' });
-        }
-        
-        actionButtons.push({ text: '🔄 Refresh List', callback_data: 'refresh' });
-        
-        if (actionButtons.length > 0) {
-            inlineKeyboard.push(actionButtons);
-        }
-
-        // Add Clear Selection button only if there are active items
-        if (activeItems && activeItems.length > 0) {
-            inlineKeyboard.push([
-                { text: '⬅️ Clear Selection', callback_data: 'clear-selection' }
-            ]);
-        }
-
-        return inlineKeyboard;
     }
 
     // Register callback handlers
