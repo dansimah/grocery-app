@@ -1,0 +1,26 @@
+{
+  "name": "telegram-grocery-bot",
+  "version": "1.0.0",
+  "description": "A Telegram bot for managing grocery lists with AI-powered item parsing",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["telegram", "bot", "grocery", "ai", "nodejs"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "@google/generative-ai": "^0.2.1",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.2.0",
+    "path": "^0.12.7",
+    "uuid": "^9.0.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+} 

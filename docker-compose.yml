@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  grocery-bot:
+    build: .
+    container_name: telegram-grocery-bot
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    volumes:
+      # Use Docker volume for database persistence (avoids permission issues)
+      - grocery_data:/app/data
+      # Keep bind mount for grocery_app_data if needed for compatibility
+      - ./grocery_app_data:/app/grocery_app_data
+    networks:
+      - bot-network
+    # Optional: Add logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  grocery_data:
+    driver: local
+
+networks:
+  bot-network:
+    driver: bridge 

@@ -1,27 +1,48 @@
-# name: Build and Deploy Docker App
+name: Build and Deploy Grocery Bot
 
-# on:
-#   push:
-#     branches:
-#       - main  # Triggers only on pushes to 'main'
+on:
+  push:
+    branches:
+      - main  # Triggers only on pushes to 'main'
+  workflow_dispatch:  # Allow manual trigger
 
-# jobs:
-#   build-and-deploy:
-#     runs-on: self-hosted  # Ensures this runs on your LXC runner
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-24.04
 
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Build Docker image
-#         run: |
-#           docker build -t my-node-app:latest .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-#       - name: Stop and remove old container
-#         run: |
-#           docker stop my-node-app || true
-#           docker rm my-node-app || true
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
 
-#       - name: Run new container
-#         run: |
-#           docker run -d --name my-node-app -p 3000:3000 my-node-app:latest
+      - name: Verify Docker setup
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Make build script executable
+        run: chmod +x scripts/build.sh
+
+      - name: Create .env file from secrets
+        run: |
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "AUTHORIZED_USERS=${{ secrets.AUTHORIZED_USERS }}" >> .env
+          echo "STATUS_REPORTING_ENABLED=false" >> .env
+
+      - name: Run build and deployment script
+        run: ./scripts/build.sh
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 10
+          docker compose ps
+          docker compose logs --tail=10 grocery-bot

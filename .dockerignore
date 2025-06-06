@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+grocery_app_data/*.db
+data/*.db
+*.log
+.DS_Store
+Thumbs.db 
