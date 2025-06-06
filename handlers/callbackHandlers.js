@@ -419,12 +419,21 @@ class CallbackHandlers {
                 const currentMessage = query.message.text;
                 const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
                 
-                if (categoryMatch) {
-                    // We're in a category view, refresh the same category
+                if (categoryMatch && categoryMatch[1] !== 'Select Category') {
+                    // We're in a specific category view, check if category still has items
                     const category = categoryMatch[1];
-                    await this.handleShopCategory(bot, query, category);
+                    const groceryData = await groceryService.getAllItemsSorted();
+                    const categoryItems = groceryData.activeItems.filter(item => item.category === category);
+                    
+                    if (categoryItems.length > 0) {
+                        // Category still has items, stay in the same category
+                        await this.handleShopCategory(bot, query, category);
+                    } else {
+                        // Category is now empty, go back to category selection
+                        await this.handleBackToCategories(bot, query);
+                    }
                 } else {
-                    // We're in the general view, go back to category selection
+                    // We're in category selection view, refresh it
                     await this.handleBackToCategories(bot, query);
                 }
                 
@@ -455,8 +464,27 @@ class CallbackHandlers {
                 show_alert: false
             });
 
-            // Refresh back to category selection
-            await this.handleBackToCategories(bot, query);
+            // Check if we're in a specific category view
+            const currentMessage = query.message.text;
+            const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
+            
+            if (categoryMatch && categoryMatch[1] !== 'Select Category') {
+                // We're in a specific category, check if it still has items
+                const category = categoryMatch[1];
+                const groceryData = await groceryService.getAllItemsSorted();
+                const categoryItems = groceryData.activeItems.filter(item => item.category === category);
+                
+                if (categoryItems.length > 0) {
+                    // Category still has items, stay in the same category
+                    await this.handleShopCategory(bot, query, category);
+                } else {
+                    // Category is now empty, go back to category selection
+                    await this.handleBackToCategories(bot, query);
+                }
+            } else {
+                // We're in category selection, refresh category selection
+                await this.handleBackToCategories(bot, query);
+            }
 
         } catch (error) {
             console.error('Error clearing found items:', error);
@@ -475,8 +503,27 @@ class CallbackHandlers {
                 show_alert: false
             });
 
-            // Refresh back to category selection
-            await this.handleBackToCategories(bot, query);
+            // Check if we're in a specific category view
+            const currentMessage = query.message.text;
+            const categoryMatch = currentMessage.match(/🛒 <b>Shopping List - ([^<]+)<\/b>/);
+            
+            if (categoryMatch && categoryMatch[1] !== 'Select Category') {
+                // We're in a specific category, check if it still has items
+                const category = categoryMatch[1];
+                const groceryData = await groceryService.getAllItemsSorted();
+                const categoryItems = groceryData.activeItems.filter(item => item.category === category);
+                
+                if (categoryItems.length > 0) {
+                    // Category still has items, refresh the same category
+                    await this.handleShopCategory(bot, query, category);
+                } else {
+                    // Category is now empty, go back to category selection
+                    await this.handleBackToCategories(bot, query);
+                }
+            } else {
+                // We're in category selection, refresh category selection
+                await this.handleBackToCategories(bot, query);
+            }
 
         } catch (error) {
             console.error('Error refreshing list:', error);

@@ -125,10 +125,12 @@ Add usernames or first names to the `AUTHORIZED_USERS` environment variable, sep
 - `•` **Pending** → `➡️` **Selected** → `✅` **Found** (removed from list)
 - `🚫` **Not Found** → `•` **Pending** (reset to try again)
 
-**Navigation:**
+**Smart Navigation:**
 - Select category → Manage items in that category  
-- "Back to Categories" → Return to category selection
-- Clear/Refresh buttons available in both views
+- **Stay in category** when changing item status (until category is empty)
+- **Auto-return to categories** when current category becomes empty
+- **"Back to Categories"** → Manually return to category selection
+- **Refresh/Clear buttons** → Context-aware (stay in category if it has items)
 
 ### Categories
 
