@@ -240,6 +240,11 @@ lait
                         break;
                 }
 
+                // Add note to button text if it exists
+                if (item.note) {
+                    mainButtonText += ` (Note: ${item.note})`;
+                }
+
                 inlineKeyboard.push([{
                     text: mainButtonText,
                     callback_data: `item-status:${item.id}:${nextStatus}`

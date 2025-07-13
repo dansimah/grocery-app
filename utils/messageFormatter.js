@@ -44,7 +44,7 @@ class MessageFormatter {
         return message;
     }
 
-    // Create grocery list display message
+    // Create grocery list message with notes support
     static createGroceryListMessage(groceryData) {
         const { grouped, foundItems } = groceryData;
         
@@ -74,7 +74,8 @@ class MessageFormatter {
                         break;
                 }
                 const escapedArticle = this.escapeMarkdown(item.article);
-                messageText += `${prefix}${escapedArticle} (x${item.quantity})\n`;
+                const noteText = item.note ? ` (Note: ${this.escapeMarkdown(item.note)})` : '';
+                messageText += `${prefix}${escapedArticle} (x${item.quantity})${noteText}\n`;
             });
             messageText += '\n';
         });
@@ -84,11 +85,37 @@ class MessageFormatter {
             messageText += '\n\n✅ <b>Found Items (Clear to remove):</b>\n';
             foundItems.forEach(item => {
                 const escapedArticle = this.escapeHtml(item.article);
-                messageText += `✅ ${escapedArticle} (x${item.quantity})\n`;
+                const noteText = item.note ? ` (Note: ${this.escapeHtml(item.note)})` : '';
+                messageText += `✅ ${escapedArticle} (x${item.quantity})${noteText}\n`;
             });
         }
 
         return messageText;
+    }
+
+    // Create auto-add message (new workflow)
+    static createAutoAddMessage(batchId, addedItems = []) {
+        let message = '';
+        
+        // Show auto-added items
+        if (addedItems && addedItems.length > 0) {
+            message += '✅ <b>Auto-Added Items:</b>\n';
+            for (const item of addedItems) {
+                const noteText = item.note ? ` (Note: ${this.escapeHtml(item.note)})` : '';
+                message += `✅ ${this.escapeHtml(item.article)} (x${item.quantity}) [${item.category}]${noteText}\n`;
+            }
+            message += '\n';
+        }
+        
+        message += '👇 <b>Click "Edit" to modify any items:</b>';
+        
+        return message;
+    }
+
+    // Create edit interface message
+    static createEditInterfaceMessage(item) {
+        const noteText = item.note ? ` (Note: ${this.escapeHtml(item.note)})` : '';
+        return `✏️ <b>Editing:</b> ${this.escapeHtml(item.article)} (x${item.quantity}) [${item.category}]${noteText}`;
     }
 
     // Create category selection message for shopping mode
@@ -301,12 +328,89 @@ class MessageFormatter {
         return '❌ Operation cancelled';
     }
 
-    // Create batch confirmation keyboard (simple approach)
+    // Create auto-add keyboard (new workflow)
+    static createAutoAddKeyboard(batchId, items) {
+        const inlineKeyboard = [];
+
+        for (const item of items) {
+            // Add edit button for each item with batchId
+            inlineKeyboard.push([{
+                text: `✏️ Edit ${item.article}`,
+                callback_data: `edit_item:${item.id}:${batchId}`
+            }]);
+        }
+
+        // Cancel entire batch button
+        inlineKeyboard.push([{
+            text: '❌ Cancel All',
+            callback_data: `cancel_batch:${batchId}`
+        }]);
+
+        return inlineKeyboard;
+    }
+
+    // Create edit interface keyboard
+    static createEditKeyboard(itemId, currentCategory, currentQuantity, currentNote = '', batchId = null) {
+        const inlineKeyboard = [];
+
+        // URL encode the note to prevent callback data corruption
+        const encodedNote = encodeURIComponent(currentNote || '');
+
+        // Category selection (first row)
+        const categoryRow = [];
+        for (let i = 0; i < CATEGORIES.length; i += 2) {
+            const row = [];
+            
+            row.push({
+                text: CATEGORIES[i],
+                callback_data: `update_item:${itemId}:${CATEGORIES[i]}:${currentQuantity}:${encodedNote}`
+            });
+
+            if (i + 1 < CATEGORIES.length) {
+                row.push({
+                    text: CATEGORIES[i + 1],
+                    callback_data: `update_item:${itemId}:${CATEGORIES[i + 1]}:${currentQuantity}:${encodedNote}`
+                });
+            }
+            
+            inlineKeyboard.push(row);
+        }
+
+        // Quantity controls
+        const quantityRow = [];
+        quantityRow.push({ text: '➖', callback_data: `update_qty:${itemId}:${currentCategory}:${Math.max(1, currentQuantity - 1)}:${encodedNote}` });
+        quantityRow.push({ text: `[${currentQuantity}]`, callback_data: `noop` });
+        quantityRow.push({ text: '➕', callback_data: `update_qty:${itemId}:${currentCategory}:${currentQuantity + 1}:${encodedNote}` });
+        inlineKeyboard.push(quantityRow);
+
+        // Note input (simplified - user can edit via text message)
+        inlineKeyboard.push([{
+            text: `📝 Note: ${currentNote || 'Add note...'}`,
+            callback_data: `edit_note:${itemId}:${currentCategory}:${currentQuantity}`
+        }]);
+
+        // Action buttons
+        const actionButtons = [
+            { text: '💾 Save', callback_data: `save_edit:${itemId}:${currentCategory}:${currentQuantity}:${encodedNote}` }
+        ];
+
+        // Add "Back to Edit List" if we have a batchId
+        if (batchId) {
+            actionButtons.push({ text: '⬅️ Back to List', callback_data: `back_to_edit_list:${batchId}` });
+        }
+
+        actionButtons.push({ text: '❌ Cancel', callback_data: `cancel_edit:${itemId}` });
+        inlineKeyboard.push(actionButtons);
+
+        return inlineKeyboard;
+    }
+
+    // Create batch confirmation keyboard (updated for auto-add workflow)
     static createBatchConfirmationKeyboard(batchId, items) {
         const inlineKeyboard = [];
 
         for (const item of items) {
-            // Add item button
+            // Add item button (now shows as auto-added)
             inlineKeyboard.push([{
                 text: `✅ ${item.article} (x${item.quantity}) [${item.category}]`,
                 callback_data: `confirm_item:${batchId}:${item.id}`
@@ -356,4 +460,4 @@ class MessageFormatter {
     }
 }
 
-module.exports = MessageFormatter; 
+module.exports = MessageFormatter;

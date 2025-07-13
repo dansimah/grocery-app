@@ -3,6 +3,7 @@ const GroceryItem = require('../models/GroceryItem');
 const MessageFormatter = require('../utils/messageFormatter');
 const loggerService = require('../services/loggerService');
 const { CATEGORIES } = require('../config/categories');
+const CommandHandlers = require('./commandHandlers');
 
 class CallbackHandlers {
     // Handle all callback queries
@@ -64,6 +65,38 @@ class CallbackHandlers {
                     await this.handleBackToCategories(bot, query);
                     break;
                 
+                case 'edit_item':
+                    await this.handleEditItem(bot, query, params[0], params[1]); // itemId, batchId
+                    break;
+                
+                case 'update_item':
+                    await this.handleUpdateItem(bot, query, params[0], params[1], params[2], params[3]); // itemId, category, quantity, note
+                    break;
+                
+                case 'update_qty':
+                    await this.handleUpdateQuantity(bot, query, params[0], params[1], params[2], params[3]); // itemId, category, quantity, note
+                    break;
+                
+                case 'edit_note':
+                    await this.handleEditNote(bot, query, params[0], params[1], params[2]); // itemId, category, quantity
+                    break;
+                
+                case 'save_edit':
+                    await this.handleSaveEdit(bot, query, params[0], params[1], params[2], params[3]); // itemId, category, quantity, note
+                    break;
+                
+                case 'cancel_edit':
+                    await this.handleCancelEdit(bot, query, params[0]); // itemId
+                    break;
+                
+                case 'back_to_edit_list':
+                    await this.handleBackToEditList(bot, query, params[0]); // batchId
+                    break;
+                
+                case 'noop':
+                    await bot.answerCallbackQuery(query.id, { text: '' });
+                    break;
+                
                 default:
                     await bot.answerCallbackQuery(query.id, {
                         text: '❌ Unknown action',
@@ -80,15 +113,15 @@ class CallbackHandlers {
         }
     }
 
-    // Handle confirming an item from batch
+    // Handle confirming an item from batch (updated for auto-add workflow)
     static async handleConfirmItem(bot, query, batchId, itemId) {
         try {
             const chatId = query.message.chat.id;
             const messageId = query.message.message_id;
 
             // Verify the item exists and belongs to the specified batch
-            const tempItem = await GroceryItem.findById(itemId);
-            if (!tempItem || tempItem.batch_id !== batchId) {
+            const item = await GroceryItem.findById(itemId);
+            if (!item || item.batch_id !== batchId) {
                 await bot.answerCallbackQuery(query.id, {
                     text: '❌ Item not found or batch mismatch',
                     show_alert: true
@@ -96,94 +129,46 @@ class CallbackHandlers {
                 return;
             }
 
-            // Confirm the item
-            const confirmedItem = await groceryService.confirmItemFromBatch(itemId);
-            
-            if (!confirmedItem) {
-                await bot.answerCallbackQuery(query.id, {
-                    text: '❌ Failed to confirm item',
-                    show_alert: true
-                });
-                return;
-            }
-            
-            console.log('🔍 Confirmed item status after confirmation:', confirmedItem.status, 'batch_id:', confirmedItem.batch_id);
-            
-            // Log activity
-            await loggerService.sendActivity(
-                query.from, 
-                'Added grocery item', 
-                `Added ${confirmedItem.article} (x${confirmedItem.quantity}) to ${confirmedItem.category}`
-            );
-
+            // In auto-add workflow, items are already added, so we just acknowledge
             await bot.answerCallbackQuery(query.id, {
-                text: `✅ ${confirmedItem.article} → ${confirmedItem.category}`,
+                text: `✅ ${item.article} is already added`,
                 show_alert: false
             });
 
-            // Get remaining items in the batch (AFTER confirmation so the confirmed item is excluded)
-            const remainingItems = await GroceryItem.findByBatchIdAndStatus(batchId, 'confirming');
+            // Get all items from this batch
+            const batchItems = await GroceryItem.findByBatchId(batchId);
             
-            // Get all added items from this batch (items with status 'pending' and same batch_id)
-            const addedItems = await GroceryItem.findByBatchIdAndStatus(batchId, 'pending');
-            console.log('🔍 Debug - Remaining items:', remainingItems.length, 'Added items:', addedItems.length);
-            console.log('🔍 Added items details:', addedItems.map(item => `${item.article} (${item.status})`));
+            // Create auto-add message and keyboard
+            const messageText = MessageFormatter.createAutoAddMessage(batchId, batchItems);
+            const keyboard = MessageFormatter.createAutoAddKeyboard(batchId, batchItems);
 
-            if (remainingItems.length === 0) {
-                // No more items, show final success message with all added items
-                let messageText = '';
-                addedItems.forEach(item => {
-                    messageText += `✅ ${MessageFormatter.escapeHtml(item.article)} (x${item.quantity}) → ${item.category}\n`;
-                });
-                messageText += '\n🎉 All items processed!';
-
-                await loggerService.logMessageUpdate(
-                    messageId,
-                    chatId,
-                    'editMessageText',
-                    query.message.text,
-                    messageText,
-                    `Batch ${batchId} complete - all items processed (callback: confirm_item:${batchId}:${itemId})`
-                );
-                await bot.editMessageText(messageText, {
-                    chat_id: chatId,
-                    message_id: messageId,
-                    parse_mode: 'HTML'
-                });
-            } else {
-                // Update message to show all added items and remaining buttons
-                const messageText = MessageFormatter.createBatchConfirmationMessage(batchId, addedItems);
-                console.log('🔍 Created message text:', messageText);
-                const keyboard = MessageFormatter.createBatchConfirmationKeyboard(batchId, remainingItems);
-
-                await loggerService.logMessageUpdate(
-                    messageId,
-                    chatId,
-                    'editMessageText',
-                    query.message.text,
-                    messageText,
-                    `Batch ${batchId} - confirmed ${confirmedItem.article}, ${remainingItems.length} items remaining (callback: confirm_item:${batchId}:${itemId})`
-                );
-                await bot.editMessageText(messageText, {
-                    chat_id: chatId,
-                    message_id: messageId,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: keyboard
-                    }
-                });
-            }
+            await loggerService.logMessageUpdate(
+                messageId,
+                chatId,
+                'editMessageText',
+                query.message.text,
+                messageText,
+                `Auto-add interface for ${batchItems.length} items`
+            );
+            await bot.editMessageText(messageText, {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: keyboard
+                }
+            });
 
         } catch (error) {
-            console.error('Error confirming item:', error);
+            console.error('Error handling confirm item:', error);
             await bot.answerCallbackQuery(query.id, {
-                text: '❌ Failed to add item',
+                text: '❌ Failed to process item',
                 show_alert: true
             });
         }
     }
 
-    // Handle category change request
+    // Handle category change request (updated for auto-add workflow)
     static async handleChangeCategory(bot, query, batchId, itemId) {
         try {
             const item = await GroceryItem.findById(itemId);
@@ -218,7 +203,7 @@ class CallbackHandlers {
         }
     }
 
-    // Handle category update
+    // Handle category update (updated for auto-add workflow)
     static async handleUpdateCategory(bot, query, batchId, itemId, newCategory, originalMessageId) {
         try {
             const item = await GroceryItem.findById(itemId);
@@ -242,29 +227,31 @@ class CallbackHandlers {
             // Delete the category selection message
             await bot.deleteMessage(query.message.chat.id, query.message.message_id);
 
-            // Update the original confirmation message with new keyboard showing updated category
+            // Update the original message with auto-add interface
             if (originalMessageId) {
-                const batchItems = await GroceryItem.findByBatchIdAndStatus(batchId, 'confirming');
-                const keyboard = MessageFormatter.createBatchConfirmationKeyboard(batchId, batchItems);
+                const batchItems = await GroceryItem.findByBatchId(batchId);
+                const messageText = MessageFormatter.createAutoAddMessage(batchId, batchItems);
+                const keyboard = MessageFormatter.createAutoAddKeyboard(batchId, batchItems);
 
                 try {
                     await loggerService.logMessageUpdate(
                         parseInt(originalMessageId),
                         query.message.chat.id,
-                        'editMessageReplyMarkup',
+                        'editMessageText',
                         '',
-                        JSON.stringify(keyboard),
-                        `Updated keyboard after category change: ${item.article} → ${newCategory} (callback: update_cat:${batchId}:${itemId}:${newCategory}:${originalMessageId})`
+                        messageText,
+                        `Updated auto-add interface after category change: ${item.article} → ${newCategory}`
                     );
-                    await bot.editMessageReplyMarkup({
-                        inline_keyboard: keyboard
-                    }, {
+                    await bot.editMessageText(messageText, {
                         chat_id: query.message.chat.id,
-                        message_id: parseInt(originalMessageId)
+                        message_id: parseInt(originalMessageId),
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: keyboard
+                        }
                     });
                 } catch (editError) {
-                    console.error('Error updating original message keyboard:', editError);
-                    // If we can't update the keyboard, that's okay - the category is still updated in the database
+                    console.error('Error updating original message:', editError);
                 }
             }
             
@@ -313,29 +300,31 @@ class CallbackHandlers {
             // Delete the category selection message
             await bot.deleteMessage(query.message.chat.id, query.message.message_id);
 
-            // Update the original confirmation message with new keyboard showing updated category
+            // Update the original message with auto-add interface
             if (originalMessageId) {
-                const batchItems = await GroceryItem.findByBatchIdAndStatus(batchId, 'confirming');
-                const keyboard = MessageFormatter.createBatchConfirmationKeyboard(batchId, batchItems);
+                const batchItems = await GroceryItem.findByBatchId(batchId);
+                const messageText = MessageFormatter.createAutoAddMessage(batchId, batchItems);
+                const keyboard = MessageFormatter.createAutoAddKeyboard(batchId, batchItems);
 
                 try {
                     await loggerService.logMessageUpdate(
                         parseInt(originalMessageId),
                         query.message.chat.id,
-                        'editMessageReplyMarkup',
+                        'editMessageText',
                         '',
-                        JSON.stringify(keyboard),
-                        `Updated keyboard after category change: ${item.article} → ${newCategory} (callback: upd_cat:${batchId}:${itemId}:${categoryIndex}:${originalMessageId})`
+                        messageText,
+                        `Updated auto-add interface after category change: ${item.article} → ${newCategory}`
                     );
-                    await bot.editMessageReplyMarkup({
-                        inline_keyboard: keyboard
-                    }, {
+                    await bot.editMessageText(messageText, {
                         chat_id: query.message.chat.id,
-                        message_id: parseInt(originalMessageId)
+                        message_id: parseInt(originalMessageId),
+                        parse_mode: 'HTML',
+                        reply_markup: {
+                            inline_keyboard: keyboard
+                        }
                     });
                 } catch (editError) {
-                    console.error('Error updating original message keyboard:', editError);
-                    // If we can't update the keyboard, that's okay - the category is still updated in the database
+                    console.error('Error updating original message:', editError);
                 }
             }
             
@@ -348,41 +337,32 @@ class CallbackHandlers {
         }
     }
 
-    // Handle cancelling remaining items in batch
+    // Handle cancelling remaining items in batch (updated for auto-add workflow)
     static async handleCancelBatch(bot, query, batchId) {
         try {
             // Get all items from the batch to show what was added vs cancelled
             const allBatchItems = await GroceryItem.findByBatchId(batchId);
             
-            // Separate confirmed items (already added) from remaining items (to be cancelled)
-            const addedItems = allBatchItems.filter(item => item.status === 'pending');
-            const remainingItems = allBatchItems.filter(item => item.status === 'confirming');
-            
-            // Cancel only the remaining unconfirmed items
+            // In auto-add workflow, all items are already added (status='pending')
+            // So we just delete all items from this batch
             const deletedCount = await groceryService.cancelBatch(batchId);
             
             // Create summary message
             let messageText = '';
             
-            // Show added items
-            if (addedItems.length > 0) {
-                addedItems.forEach(item => {
-                    messageText += `✅ ${MessageFormatter.escapeHtml(item.article)} (x${item.quantity}) → ${item.category}\n`;
+            if (allBatchItems.length > 0) {
+                messageText += '❌ <b>Cancelled Items:</b>\n';
+                allBatchItems.forEach(item => {
+                    const noteText = item.note ? ` (Note: ${MessageFormatter.escapeHtml(item.note)})` : '';
+                    messageText += `❌ ${MessageFormatter.escapeHtml(item.article)} (x${item.quantity}) [${item.category}]${noteText}\n`;
                 });
-                messageText += '\n';
-            }
-            
-            // Show cancelled items
-            if (remainingItems.length > 0) {
-                remainingItems.forEach(item => {
-                    messageText += `❌ ${MessageFormatter.escapeHtml(item.article)} (x${item.quantity}) → ${item.category}\n`;
-                });
+                messageText += '\n🗑️ All items removed from your list.';
             } else {
-                messageText += '❌ No remaining items to cancel';
+                messageText += '❌ No items to cancel';
             }
             
             await bot.answerCallbackQuery(query.id, {
-                text: `❌ Cancelled ${deletedCount} remaining items`,
+                text: `❌ Cancelled ${deletedCount} items`,
                 show_alert: false
             });
 
@@ -392,7 +372,7 @@ class CallbackHandlers {
                 'editMessageText',
                 query.message.text,
                 messageText,
-                `Batch ${batchId} cancelled - ${addedItems.length} items added, ${remainingItems.length} items cancelled`
+                `Batch ${batchId} cancelled - ${deletedCount} items removed`
             );
             await bot.editMessageText(messageText, {
                 chat_id: query.message.chat.id,
@@ -563,7 +543,6 @@ class CallbackHandlers {
             const groceryData = await groceryService.getAllItemsSorted();
             
             const messageText = MessageFormatter.createCategoryShoppingMessage(groceryData, category);
-            const CommandHandlers = require('./commandHandlers');
             const keyboard = CommandHandlers.createCategoryShoppingKeyboard(
                 groceryData.activeItems, 
                 groceryData.foundItems, 
@@ -599,7 +578,6 @@ class CallbackHandlers {
             const groceryData = await groceryService.getAllItemsSorted();
             
             const messageText = MessageFormatter.createCategorySelectionMessage(groceryData);
-            const CommandHandlers = require('./commandHandlers');
             const keyboard = CommandHandlers.createCategorySelectionKeyboard(groceryData);
 
             await bot.editMessageText(messageText, {
@@ -620,6 +598,235 @@ class CallbackHandlers {
             console.error('Error handling back to categories:', error);
             await bot.answerCallbackQuery(query.id, {
                 text: '❌ Error loading categories',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle edit item request
+    static async handleEditItem(bot, query, itemId, batchId) {
+        try {
+            const item = await groceryService.getItemForEdit(itemId);
+            if (!item) {
+                await bot.answerCallbackQuery(query.id, {
+                    text: '❌ Item not found',
+                    show_alert: true
+                });
+                return;
+            }
+
+            // Create edit interface
+            const messageText = MessageFormatter.createEditInterfaceMessage(item);
+            const keyboard = MessageFormatter.createEditKeyboard(item.id, item.category, item.quantity, item.note, batchId);
+
+            // Send edit interface message
+            await bot.sendMessage(query.message.chat.id, messageText, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: keyboard
+                }
+            });
+
+            await bot.answerCallbackQuery(query.id);
+
+        } catch (error) {
+            console.error('Error handling edit item:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Failed to open edit interface',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle back to edit list
+    static async handleBackToEditList(bot, query, batchId) {
+        try {
+            // Get items from the batch
+            const batchItems = await GroceryItem.findByBatchId(batchId);
+            
+            // Create auto-add message and keyboard
+            const messageText = MessageFormatter.createAutoAddMessage(batchId, batchItems);
+            const keyboard = MessageFormatter.createAutoAddKeyboard(batchId, batchItems);
+
+            await bot.editMessageText(messageText, {
+                chat_id: query.message.chat.id,
+                message_id: query.message.message_id,
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: keyboard
+                }
+            });
+
+            await bot.answerCallbackQuery(query.id, {
+                text: '🔙 Back to Edit List',
+                show_alert: false
+            });
+
+        } catch (error) {
+            console.error('Error handling back to edit list:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error loading edit list',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle item update (category change)
+    static async handleUpdateItem(bot, query, itemId, newCategory, quantity, encodedNote) {
+        try {
+            const note = decodeURIComponent(encodedNote || '');
+            const success = await groceryService.editItem(itemId, newCategory, parseInt(quantity), note);
+            
+            if (success) {
+                // Refresh the edit interface with new category
+                const item = await groceryService.getItemForEdit(itemId);
+                const messageText = MessageFormatter.createEditInterfaceMessage(item);
+                
+                // Get batchId from the item
+                const batchId = item.batch_id;
+                const keyboard = MessageFormatter.createEditKeyboard(item.id, item.category, item.quantity, item.note, batchId);
+
+                await bot.editMessageText(messageText, {
+                    chat_id: query.message.chat.id,
+                    message_id: query.message.message_id,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: keyboard
+                    }
+                });
+
+                await bot.answerCallbackQuery(query.id, {
+                    text: `✅ Updated category to ${newCategory}`,
+                    show_alert: false
+                });
+            } else {
+                await bot.answerCallbackQuery(query.id, {
+                    text: '❌ Failed to update item',
+                    show_alert: true
+                });
+            }
+
+        } catch (error) {
+            console.error('Error updating item:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error updating item',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle quantity update
+    static async handleUpdateQuantity(bot, query, itemId, category, quantity, encodedNote) {
+        try {
+            const note = decodeURIComponent(encodedNote || '');
+            const success = await groceryService.editItem(itemId, category, parseInt(quantity), note);
+            
+            if (success) {
+                // Refresh the edit interface with new quantity
+                const item = await groceryService.getItemForEdit(itemId);
+                const messageText = MessageFormatter.createEditInterfaceMessage(item);
+                
+                // Get batchId from the item
+                const batchId = item.batch_id;
+                const keyboard = MessageFormatter.createEditKeyboard(item.id, item.category, item.quantity, item.note, batchId);
+
+                await bot.editMessageText(messageText, {
+                    chat_id: query.message.chat.id,
+                    message_id: query.message.message_id,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: keyboard
+                    }
+                });
+
+                await bot.answerCallbackQuery(query.id, {
+                    text: `✅ Updated quantity to ${quantity}`,
+                    show_alert: false
+                });
+            } else {
+                await bot.answerCallbackQuery(query.id, {
+                    text: '❌ Failed to update quantity',
+                    show_alert: true
+                });
+            }
+
+        } catch (error) {
+            console.error('Error updating quantity:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error updating quantity',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle note editing (simplified - just show current note)
+    static async handleEditNote(bot, query, itemId, category, quantity) {
+        try {
+            const item = await groceryService.getItemForEdit(itemId);
+            
+            await bot.answerCallbackQuery(query.id, {
+                text: `📝 Current note: ${item.note || 'No note'}\n\nTo add/edit note, send a text message with the new note.`,
+                show_alert: true
+            });
+
+        } catch (error) {
+            console.error('Error handling note edit:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error handling note',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle save edit
+    static async handleSaveEdit(bot, query, itemId, category, quantity, encodedNote) {
+        try {
+            const note = decodeURIComponent(encodedNote || '');
+            const success = await groceryService.editItem(itemId, category, parseInt(quantity), note);
+            
+            if (success) {
+                const item = await groceryService.getItemForEdit(itemId);
+                const noteText = item.note ? ` (Note: ${item.note})` : '';
+                
+                await bot.answerCallbackQuery(query.id, {
+                    text: `✅ Saved: ${item.article} (x${item.quantity}) [${item.category}]${noteText}`,
+                    show_alert: false
+                });
+
+                // Delete the edit message
+                await bot.deleteMessage(query.message.chat.id, query.message.message_id);
+
+            } else {
+                await bot.answerCallbackQuery(query.id, {
+                    text: '❌ Failed to save changes',
+                    show_alert: true
+                });
+            }
+
+        } catch (error) {
+            console.error('Error saving edit:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error saving changes',
+                show_alert: true
+            });
+        }
+    }
+
+    // Handle cancel edit
+    static async handleCancelEdit(bot, query, itemId) {
+        try {
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Edit cancelled',
+                show_alert: false
+            });
+
+            // Delete the edit message
+            await bot.deleteMessage(query.message.chat.id, query.message.message_id);
+
+        } catch (error) {
+            console.error('Error cancelling edit:', error);
+            await bot.answerCallbackQuery(query.id, {
+                text: '❌ Error cancelling edit',
                 show_alert: true
             });
         }

@@ -8,6 +8,7 @@ class GroceryItem {
         this.category = data.category;
         this.status = data.status || 'pending';
         this.batch_id = data.batch_id; // For tracking confirmation batches
+        this.note = data.note || null;
         this.created_at = data.created_at;
         this.updated_at = data.updated_at;
     }
@@ -19,17 +20,17 @@ class GroceryItem {
                 // Update existing item
                 const result = await database.run(
                     `UPDATE grocery_items 
-                     SET article = ?, quantity = ?, category = ?, status = ?, batch_id = ?, updated_at = CURRENT_TIMESTAMP 
+                     SET article = ?, quantity = ?, category = ?, status = ?, batch_id = ?, note = ?, updated_at = CURRENT_TIMESTAMP 
                      WHERE id = ?`,
-                    [this.article, this.quantity, this.category, this.status, this.batch_id, this.id]
+                    [this.article, this.quantity, this.category, this.status, this.batch_id, this.note, this.id]
                 );
                 return result.changes > 0;
             } else {
                 // Create new item
                 const result = await database.run(
-                    `INSERT INTO grocery_items (article, quantity, category, status, batch_id) 
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [this.article, this.quantity, this.category, this.status, this.batch_id]
+                    `INSERT INTO grocery_items (article, quantity, category, status, batch_id, note) 
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [this.article, this.quantity, this.category, this.status, this.batch_id, this.note]
                 );
                 this.id = result.id;
                 return this;

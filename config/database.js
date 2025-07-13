@@ -41,6 +41,7 @@ class Database {
                         category TEXT NOT NULL,
                         status TEXT NOT NULL DEFAULT 'pending',
                         batch_id TEXT,
+                        note TEXT,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
@@ -59,6 +60,16 @@ class Database {
                     // Ignore error if column already exists
                     if (err && !err.message.includes('duplicate column')) {
                         console.error('Error adding batch_id column:', err);
+                    }
+                });
+
+                // Add note column if it doesn't exist (for existing databases)
+                this.db.run(`
+                    ALTER TABLE grocery_items ADD COLUMN note TEXT
+                `, (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.error('Error adding note column:', err);
                     }
                 });
 

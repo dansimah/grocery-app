@@ -16,6 +16,13 @@ class MessageHandlers {
                 return;
             }
 
+            // Check if this might be a note update (simple heuristic)
+            if (text.length < 100 && !text.includes('\n')) {
+                // Could be a note - check if user is in edit mode
+                // For now, we'll just proceed with normal parsing
+                // In a more sophisticated version, we could track edit sessions
+            }
+
             // Keep the original text with newlines intact for proper line-by-line parsing
             const cleanedText = text.trim();
 
@@ -23,7 +30,7 @@ class MessageHandlers {
             const parsingMessage = await bot.sendMessage(chatId, '🔄 Parsing your grocery list...');
 
             try {
-                // Parse and create temp batch
+                // Parse and auto-add items
                 const { batchId, items } = await groceryService.parseItemsForConfirmation(cleanedText);
 
                 if (items.length === 0) {
@@ -49,24 +56,24 @@ class MessageHandlers {
                 // Log activity
                 await loggerService.sendActivity(
                     msg.from, 
-                    'Parsing grocery items', 
-                    `Created batch ${batchId} with ${items.length} items: ${items.map(item => item.article).join(', ')}`
+                    'Auto-adding grocery items', 
+                    `Auto-added batch ${batchId} with ${items.length} items: ${items.map(item => item.article).join(', ')}`
                 );
 
-                // Create confirmation message (buttons only, no text list)
-                const messageText = MessageFormatter.createBatchConfirmationMessage(batchId);
+                // Create auto-add message
+                const messageText = MessageFormatter.createAutoAddMessage(batchId, items);
                 
-                // Create keyboard with batch-based callbacks
-                const keyboard = MessageFormatter.createBatchConfirmationKeyboard(batchId, items);
+                // Create keyboard with edit options
+                const keyboard = MessageFormatter.createAutoAddKeyboard(batchId, items);
 
-                // Edit the parsing message into confirmation message
+                // Edit the parsing message into auto-add message
                 await loggerService.logMessageUpdate(
                     parsingMessage.message_id,
                     chatId,
                     'editMessageText',
                     '🔄 Parsing your grocery list...',
                     messageText,
-                    `Batch confirmation for ${items.length} items`
+                    `Auto-add interface for ${items.length} items`
                 );
                 await bot.editMessageText(messageText, {
                     chat_id: chatId,

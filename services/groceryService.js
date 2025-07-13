@@ -2,7 +2,7 @@ const GroceryItem = require('../models/GroceryItem');
 const aiService = require('./aiService');
 
 class GroceryService {
-    // Parse and create temp batch for confirmation
+    // Parse and auto-add items (new workflow)
     async parseItemsForConfirmation(groceryText) {
         try {
             // Use AI to parse the grocery text
@@ -11,8 +11,8 @@ class GroceryService {
             // Generate short batch ID (8 characters)
             const batchId = require('crypto').randomBytes(4).toString('hex');
             
-            // Create temporary items with batch_id and 'confirming' status
-            const tempItems = [];
+            // Auto-add items directly to main list
+            const addedItems = [];
             for (const newItem of parsedItems) {
                 if (!newItem.article || !newItem.category) continue;
                 
@@ -20,19 +20,56 @@ class GroceryService {
                     article: newItem.article,
                     quantity: newItem.quantity,
                     category: newItem.category,
-                    status: 'confirming', // Special status for confirmation
+                    status: 'pending', // Directly add to main list
                     batch_id: batchId
                 });
                 
                 await groceryItem.save();
-                tempItems.push(groceryItem);
+                addedItems.push(groceryItem);
             }
             
-            console.log(`✅ Created batch ${batchId} with ${tempItems.length} items for confirmation`);
-            return { batchId, items: tempItems };
+            console.log(`✅ Auto-added batch ${batchId} with ${addedItems.length} items`);
+            return { batchId, items: addedItems };
             
         } catch (error) {
-            console.error('Error parsing items for confirmation:', error);
+            console.error('Error parsing and auto-adding items:', error);
+            throw error;
+        }
+    }
+
+    // Edit an existing item (category, quantity, note)
+    async editItem(itemId, newCategory, newQuantity, newNote) {
+        try {
+            const item = await GroceryItem.findById(itemId);
+            if (!item) {
+                throw new Error(`Item with ID ${itemId} not found`);
+            }
+            
+            // Update the item
+            item.category = newCategory;
+            item.quantity = newQuantity;
+            item.note = newNote;
+            await item.save();
+            
+            console.log(`✅ Updated item ${itemId}: ${item.article} (x${item.quantity}) [${item.category}] ${item.note ? `(Note: ${item.note})` : ''}`);
+            return item;
+            
+        } catch (error) {
+            console.error('Error editing item:', error);
+            throw error;
+        }
+    }
+
+    // Get item for editing
+    async getItemForEdit(itemId) {
+        try {
+            const item = await GroceryItem.findById(itemId);
+            if (!item) {
+                throw new Error(`Item with ID ${itemId} not found`);
+            }
+            return item;
+        } catch (error) {
+            console.error('Error getting item for edit:', error);
             throw error;
         }
     }
@@ -89,19 +126,19 @@ class GroceryService {
         }
     }
 
-    // Delete remaining unconfirmed items in batch (cancel confirmation)
+    // Delete all items in batch (cancel confirmation - updated for auto-add workflow)
     async cancelBatch(batchId) {
         try {
-            // Only delete items that are still in 'confirming' status
-            const remainingItems = await GroceryItem.findByBatchIdAndStatus(batchId, 'confirming');
+            // Delete all items from the batch (in auto-add workflow, they all have status='pending')
+            const batchItems = await GroceryItem.findByBatchId(batchId);
             let deletedCount = 0;
             
-            for (const item of remainingItems) {
+            for (const item of batchItems) {
                 const success = await item.delete();
                 if (success) deletedCount++;
             }
             
-            console.log(`🗑️ Cancelled batch ${batchId} remaining items (${deletedCount} items)`);
+            console.log(`🗑️ Cancelled batch ${batchId} (${deletedCount} items)`);
             return deletedCount;
         } catch (error) {
             console.error('Error cancelling batch:', error);

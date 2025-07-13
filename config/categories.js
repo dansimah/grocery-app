@@ -9,7 +9,8 @@ const CATEGORIES = [
     'Surgelés',
     'Boissons',
     'Hygiène',
-    'Conserves'
+    'Conserves',
+    'Unknown'
 ];
 
 module.exports = {
