@@ -3,10 +3,10 @@ const { v4: uuidv4 } = require('uuid');
 
 class SessionService {
     // Create a short callback ID and store data in session
-    async createCallbackSession(messageId, data) {
+    async createCallbackSession(messageId, data, userId = null) {
         try {
             const callbackId = uuidv4().substring(0, 8); // Short 8-character ID
-            const session = await Session.create(callbackId, messageId, data);
+            const session = await Session.create(callbackId, messageId, data, userId);
             return callbackId;
         } catch (error) {
             console.error('Error creating callback session:', error);
@@ -69,6 +69,16 @@ class SessionService {
             return await Session.findByMessageId(messageId);
         } catch (error) {
             console.error('Error getting message sessions:', error);
+            throw error;
+        }
+    }
+
+    // Get active sessions for a user (useful for note editing)
+    async getUserSessions(userId) {
+        try {
+            return await Session.findByUserId(userId);
+        } catch (error) {
+            console.error('Error getting user sessions:', error);
             throw error;
         }
     }

@@ -5,6 +5,7 @@ class Session {
     constructor(data = {}) {
         this.id = data.id;
         this.message_id = data.message_id;
+        this.user_id = data.user_id;
         this.data = typeof data.data === 'string' ? data.data : JSON.stringify(data.data || {});
         this.created_at = data.created_at;
         this.expires_at = data.expires_at;
@@ -21,9 +22,9 @@ class Session {
             }
 
             const result = await database.run(
-                `INSERT OR REPLACE INTO sessions (id, message_id, data, expires_at) 
-                 VALUES (?, ?, ?, ?)`,
-                [this.id, this.message_id, this.data, this.expires_at]
+                `INSERT OR REPLACE INTO sessions (id, message_id, user_id, data, expires_at) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [this.id, this.message_id, this.user_id, this.data, this.expires_at]
             );
             return this;
         } catch (error) {
@@ -65,6 +66,19 @@ class Session {
             return rows.map(row => new Session(row));
         } catch (error) {
             console.error('Error finding sessions by message id:', error);
+            throw error;
+        }
+    }
+
+    static async findByUserId(userId) {
+        try {
+            const rows = await database.all(
+                'SELECT * FROM sessions WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP',
+                [userId]
+            );
+            return rows.map(row => new Session(row));
+        } catch (error) {
+            console.error('Error finding sessions by user id:', error);
             throw error;
         }
     }
@@ -125,11 +139,12 @@ class Session {
     }
 
     // Create session with data
-    static async create(id, messageId, data) {
+    static async create(id, messageId, data, userId = null) {
         try {
             const session = new Session({
                 id,
                 message_id: messageId,
+                user_id: userId,
                 data: data
             });
             return await session.save();

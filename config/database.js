@@ -78,6 +78,7 @@ class Database {
                     CREATE TABLE IF NOT EXISTS sessions (
                         id TEXT PRIMARY KEY,
                         message_id INTEGER NOT NULL,
+                        user_id INTEGER,
                         data TEXT NOT NULL,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         expires_at DATETIME NOT NULL
@@ -87,6 +88,16 @@ class Database {
                         console.error('Error creating sessions table:', err);
                         reject(err);
                         return;
+                    }
+                });
+
+                // Add user_id column if it doesn't exist (for existing databases)
+                this.db.run(`
+                    ALTER TABLE sessions ADD COLUMN user_id INTEGER
+                `, (err) => {
+                    // Ignore error if column already exists
+                    if (err && !err.message.includes('duplicate column')) {
+                        console.error('Error adding user_id column:', err);
                     }
                 });
 

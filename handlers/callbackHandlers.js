@@ -759,14 +759,41 @@ class CallbackHandlers {
         }
     }
 
-    // Handle note editing (simplified - just show current note)
+    // Handle note editing - prompt user for text input
     static async handleEditNote(bot, query, itemId, category, quantity) {
         try {
             const item = await groceryService.getItemForEdit(itemId);
+            const chatId = query.message.chat.id;
+            
+            // Create a simple session to track note editing
+            const sessionData = {
+                action: 'edit_note',
+                itemId: itemId,
+                category: category,
+                quantity: quantity,
+                currentNote: item.note || ''
+            };
+            
+            // Store session for 5 minutes with user ID
+            const sessionId = await sessionService.createCallbackSession(
+                query.message.message_id, 
+                sessionData, 
+                query.from.id
+            );
+            
+            // Send prompt message
+            const promptMessage = `📝 **Note for ${item.article}**\n\n` +
+                `Current note: ${item.note || 'None'}\n\n` +
+                `Send me the new note:\n` +
+                `• Type your note text\n` +
+                `• Send "clear" to remove the note\n` +
+                `• Send "cancel" to cancel editing`;
+            
+            await bot.sendMessage(chatId, promptMessage, { parse_mode: 'Markdown' });
             
             await bot.answerCallbackQuery(query.id, {
-                text: `📝 Current note: ${item.note || 'No note'}\n\nTo add/edit note, send a text message with the new note.`,
-                show_alert: true
+                text: '📝 Please send the new note',
+                show_alert: false
             });
 
         } catch (error) {

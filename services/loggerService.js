@@ -39,7 +39,7 @@ class LoggerService {
         try {
             const errorMessage = `❌ <b>Bot Error</b>\n\n` +
                 `<b>Context:</b> ${context}\n` +
-                `<b>Error:</b> <code>${error.message}</code>\n` +
+                `<b>Error:</b> <code>${error.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>\n` +
                 `<b>Time:</b> ${new Date().toISOString()}`;
 
             await this.bot.sendMessage(this.statusChatId, errorMessage, {
@@ -165,9 +165,9 @@ class LoggerService {
                     `<b>Type:</b> ${updateType}\n` +
                     `<b>Chat ID:</b> <code>${chatId}</code>\n` +
                     `<b>Message ID:</b> <code>${messageId}</code>\n` +
-                    (context ? `<b>Context:</b> ${context}\n` : '') +
-                    (oldContent ? `<b>Old Content:</b> <code>${oldContent.substring(0, 100)}${oldContent.length > 100 ? '...' : ''}</code>\n` : '') +
-                    (newContent ? `<b>New Content:</b> <code>${newContent.substring(0, 100)}${newContent.length > 100 ? '...' : ''}</code>\n` : '') +
+                    (context ? `<b>Context:</b> ${context.replace(/</g, '&lt;').replace(/>/g, '&gt;')}\n` : '') +
+                    (oldContent ? `<b>Old Content:</b> <code>${oldContent.substring(0, 100).replace(/</g, '&lt;').replace(/>/g, '&gt;')}${oldContent.length > 100 ? '...' : ''}</code>\n` : '') +
+                    (newContent ? `<b>New Content:</b> <code>${newContent.substring(0, 100).replace(/</g, '&lt;').replace(/>/g, '&gt;')}${newContent.length > 100 ? '...' : ''}</code>\n` : '') +
                     `<b>Time:</b> ${timestamp}`;
 
                 await this.bot.sendMessage(this.statusChatId, telegramMessage, {
