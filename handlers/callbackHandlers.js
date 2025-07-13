@@ -2,6 +2,7 @@ const groceryService = require('../services/groceryService');
 const GroceryItem = require('../models/GroceryItem');
 const MessageFormatter = require('../utils/messageFormatter');
 const loggerService = require('../services/loggerService');
+const sessionService = require('../services/sessionService');
 const { CATEGORIES } = require('../config/categories');
 const CommandHandlers = require('./commandHandlers');
 
