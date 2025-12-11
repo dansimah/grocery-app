@@ -19,7 +19,7 @@ const BOT_CONFIG = {
     SESSION_EXPIRE_HOURS: 24, // Sessions expire after 24 hours
     
     // Gemini model settings
-    GEMINI_MODEL: "gemini-2.0-flash"
+    GEMINI_MODEL: "gemini-2.5-flash"
 };
 
 function isAuthorized(user) {
