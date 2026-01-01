@@ -1,12 +1,31 @@
 const GroceryItem = require('../models/GroceryItem');
 const aiService = require('./aiService');
+const productCacheService = require('./productCacheService');
 
 class GroceryService {
-    // Parse and auto-add items (new workflow)
+    // Parse and auto-add items (new workflow with cache)
     async parseItemsForConfirmation(groceryText) {
         try {
-            // Use AI to parse the grocery text
-            const parsedItems = await aiService.parseGroceryItems(groceryText);
+            // Step 1: Try cache first
+            const { cachedItems, unparsedLines } = await productCacheService.parseWithCache(groceryText);
+            
+            // Step 2: Use AI only for items not in cache
+            let geminiItems = [];
+            if (unparsedLines.length > 0) {
+                console.log(`🤖 Sending ${unparsedLines.length} unparsed items to Gemini...`);
+                geminiItems = await aiService.parseGroceryItems(unparsedLines.join('\n'));
+                
+                // Add originalInput to gemini items (the unparsed line)
+                geminiItems = geminiItems.map((item, index) => ({
+                    ...item,
+                    originalInput: unparsedLines[index] || item.article
+                }));
+            } else {
+                console.log('✨ All items found in cache, skipping Gemini API call!');
+            }
+            
+            // Step 3: Combine cached and AI-parsed items
+            const parsedItems = [...cachedItems, ...geminiItems];
             
             // Generate short batch ID (8 characters)
             const batchId = require('crypto').randomBytes(4).toString('hex');
@@ -21,14 +40,15 @@ class GroceryService {
                     quantity: newItem.quantity,
                     category: newItem.category,
                     status: 'pending', // Directly add to main list
-                    batch_id: batchId
+                    batch_id: batchId,
+                    original_input: newItem.originalInput || newItem.article
                 });
                 
                 await groceryItem.save();
                 addedItems.push(groceryItem);
             }
             
-            console.log(`✅ Auto-added batch ${batchId} with ${addedItems.length} items`);
+            console.log(`✅ Auto-added batch ${batchId} with ${addedItems.length} items (${cachedItems.length} from cache, ${geminiItems.length} from AI)`);
             return { batchId, items: addedItems };
             
         } catch (error) {

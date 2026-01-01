@@ -11,6 +11,8 @@ class GroceryItem {
         this.note = data.note || null;
         this.created_at = data.created_at;
         this.updated_at = data.updated_at;
+        // Keep original_input in memory only (not persisted to DB)
+        this.original_input = data.original_input || null;
     }
 
     // Create a new grocery item

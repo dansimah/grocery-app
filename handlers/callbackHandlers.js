@@ -3,6 +3,7 @@ const GroceryItem = require('../models/GroceryItem');
 const MessageFormatter = require('../utils/messageFormatter');
 const loggerService = require('../services/loggerService');
 const sessionService = require('../services/sessionService');
+const productCacheService = require('../services/productCacheService');
 const { CATEGORIES } = require('../config/categories');
 const CommandHandlers = require('./commandHandlers');
 
@@ -130,6 +131,15 @@ class CallbackHandlers {
                 return;
             }
 
+            // Save to cache (user confirmed this item, so learn from it)
+            if (item.original_input) {
+                await productCacheService.addProductVariant(
+                    item.article, 
+                    item.category, 
+                    item.original_input
+                );
+            }
+
             // In auto-add workflow, items are already added, so we just acknowledge
             await bot.answerCallbackQuery(query.id, {
                 text: `✅ ${item.article} is already added`,
@@ -220,6 +230,15 @@ class CallbackHandlers {
             item.category = newCategory;
             await item.save();
 
+            // Save to cache (learn from this approval)
+            if (item.original_input) {
+                await productCacheService.addProductVariant(
+                    item.article, 
+                    newCategory, 
+                    item.original_input
+                );
+            }
+
             await bot.answerCallbackQuery(query.id, {
                 text: `✅ Updated ${item.article} category to ${newCategory}`,
                 show_alert: false
@@ -292,6 +311,15 @@ class CallbackHandlers {
             // Update the item's category
             item.category = newCategory;
             await item.save();
+
+            // Save to cache (learn from this approval)
+            if (item.original_input) {
+                await productCacheService.addProductVariant(
+                    item.article, 
+                    newCategory, 
+                    item.original_input
+                );
+            }
 
             await bot.answerCallbackQuery(query.id, {
                 text: `✅ Updated ${item.article} category to ${newCategory}`,
@@ -681,6 +709,16 @@ class CallbackHandlers {
             if (success) {
                 // Refresh the edit interface with new category
                 const item = await groceryService.getItemForEdit(itemId);
+                
+                // Save to cache (learn from category change in edit interface)
+                if (item.original_input) {
+                    await productCacheService.addProductVariant(
+                        item.article, 
+                        newCategory, 
+                        item.original_input
+                    );
+                }
+                
                 const messageText = MessageFormatter.createEditInterfaceMessage(item);
                 
                 // Get batchId from the item
